@@ -1,12 +1,11 @@
-import requests, json, time, os
-from datetime import datetime
+import requests
 import pandas as pd
 
 #Assign or create a file directory for JSON files
 courses_filepath = "CourseStatusReport.csv"
 
 # Open csv files listing course information, retrieved from https://wildfly-prd.iit.edu/coursestatusreport/
-d = pd.read_csv(courses_filepath, dtype=str)
+d = pd.read_csv(courses_filepath, dtype=str, encoding='unicode_escape')
 d.set_index("CRN", inplace=True, drop=True)
 d["Primary ID"] = None
 d["email"] = None
@@ -23,10 +22,8 @@ def GetEmail(api_key, index, row):
         first_name, last_name = raw_name.split(", ")
         first_name = first_name.replace(" ","%2B")
         first_name = first_name.replace("'","")
-        print(first_name)
         last_name = last_name.replace(" ","%2B")
         last_name = last_name.replace("'","")
-        print(last_name)
 
         # Make an API call to search for the instructor name and retrieve a Primary ID.
         apicall = 'https://api-na.hosted.exlibrisgroup.com/almaws/v1/users?{format}&apikey={api_key}&q=ALL~{first_name}%2b{last_name}'
@@ -35,10 +32,8 @@ def GetEmail(api_key, index, row):
                          "api_key": api_key,
                          "first_name": first_name,
                          "last_name": last_name}
-        print(apicall.format(**call_elements))
         response = requests.get(apicall.format(**call_elements))
         instr_response = response.json()
-        print(instr_response)
 
         if instr_response["total_record_count"] > 1:
             for i in instr_response["user"]:
@@ -56,16 +51,13 @@ def GetEmail(api_key, index, row):
         else:
             id = instr_response["user"][0]["primary_id"]
 
-        print(id)
         email_call = 'https://api-na.hosted.exlibrisgroup.com/almaws/v1/users/{id}?{format}&apikey={api_key}'
         format = "format=json"
         email_call_elements = {"id": id,
                          "format": format,
                          "api_key": api_key}
         email_response = requests.get(email_call.format(**email_call_elements))
-        print(email_response)
         email_dict = email_response.json()
-        print(email_dict)
         email = email_dict["contact_info"]["email"][0]["email_address"]
 
     except:
@@ -83,7 +75,6 @@ for index, row in d.iterrows():
     unique_instructor = [department, instructor]
 
     if unique_instructor not in instr_list:
-        print(unique_instructor)
         instr_list.append(unique_instructor)
         
         instr_details = GetEmail(api_key, index, row)
